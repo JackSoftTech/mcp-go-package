@@ -16,11 +16,20 @@ const (
 
 var TileTypes = []string{Grass, Forest, Mountain, Field, Desert, Hill}
 
-type Map struct {
-	Tiles []Tile
+type MapType int
+
+const (
+	Square MapType = iota
+	Hex
+)
+
+type Map interface {
+	Info() string
+	GetTiles() []Tile
+	GetType() MapType
 }
 
-func GenerateRandomMap(width, height int) Map {
+func GenerateRandomMap(mapType MapType, width, height int) Map {
 	rand.Seed(time.Now().UnixNano())
 	tiles := make([]Tile, 0, width*height)
 	for x := 0; x < width; x++ {
@@ -33,7 +42,16 @@ func GenerateRandomMap(width, height int) Map {
 			})
 		}
 	}
-	return Map{
-		Tiles: tiles,
+	if mapType == Hex {
+		return &HexMap{
+			Width:  width,
+			Height: height,
+			Tiles:  tiles,
+		}
+	}
+	return &SquareMap{
+		Width:  width,
+		Height: height,
+		Tiles:  tiles,
 	}
 }
