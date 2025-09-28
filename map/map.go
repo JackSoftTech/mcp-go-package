@@ -16,16 +16,8 @@ const (
 
 var TileTypes = []string{Grass, Forest, Mountain, Field, Desert, Hill}
 
-type Tile struct {
-	Type string
-	X    int
-	Y    int
-}
-
 type Map struct {
-	Tiles  []Tile
-	Width  int
-	Height int
+	Tiles []Tile
 }
 
 func GenerateRandomMap(width, height int) Map {
@@ -42,8 +34,6 @@ func GenerateRandomMap(width, height int) Map {
 		}
 	}
 	return Map{
-		Tiles:  tiles,
-		Width:  width,
-		Height: height,
+		Tiles: tiles,
 	}
 }
