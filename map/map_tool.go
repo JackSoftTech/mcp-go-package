@@ -8,9 +8,10 @@ import (
 )
 
 type GenerateMapParams struct {
-	Width   int    `json:"width"`
-	Height  int    `json:"height"`
-	MapType string `json:"map_type"` // "square" or "hex"
+	Width     int      `json:"width"`
+	Height    int      `json:"height"`
+	MapType   string   `json:"map_type"`   // "square" or "hex"
+	TileTypes []string `json:"tile_types"` // tile type list
 }
 
 func GenerateMapTool(ctx context.Context, req *mcp.CallToolRequest, args GenerateMapParams) (*mcp.CallToolResult, any, error) {
@@ -21,9 +22,17 @@ func GenerateMapTool(ctx context.Context, req *mcp.CallToolRequest, args Generat
 	default:
 		mapType = Square
 	}
-	gameMap := GenerateRandomMap(mapType, args.Width, args.Height)
+	opts := MapGenOptions{
+		MapType:   mapType,
+		Width:     args.Width,
+		Height:    args.Height,
+		TileTypes: args.TileTypes,
+	}
+	gameMap := GenerateRandomMap(opts)
 	var result string
-	result += gameMap.Info() + "\n"
+	if info, ok := interface{}(gameMap).(interface{ Info() string }); ok {
+		result += info.Info() + "\n"
+	}
 	for _, tile := range gameMap.GetTiles() {
 		result += fmt.Sprintf("Tile (%d, %d): %s\n", tile.X, tile.Y, tile.Type)
 	}
