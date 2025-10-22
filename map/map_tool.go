@@ -3,37 +3,54 @@ package mapTools
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-type GenerateMapParams struct {
-	Width     int      `json:"width"`
-	Height    int      `json:"height"`
-	MapType   string   `json:"map_type"`   // "square" or "hex"
-	TileTypes []string `json:"tile_types"` // tile type list
+type MapParams struct {
+	MapType   string         `json:"map_type"` // "square" or "hex"
+	Width     int            `json:"width"`
+	Height    int            `json:"height"`
+	TileTypes map[string]int `json:"tile_types"` // tile type -> count, use "any" for unlimited
 }
 
-func GenerateMapTool(ctx context.Context, req *mcp.CallToolRequest, args GenerateMapParams) (*mcp.CallToolResult, any, error) {
-	var mapType MapType
-	switch args.MapType {
-	case "hex":
-		mapType = Hex
-	default:
-		mapType = Square
+var mapTypeMapping = map[string]func(MapResult) Map{
+	(&SquareMap{}).Key(): GetSquareMap,
+	(&HexMap{}).Key():    GetHexMap,
+}
+
+func ValidateMapType(mapType string) bool {
+	_, ok := mapTypeMapping[mapType]
+	return ok
+}
+
+func GenerateMapTool(ctx context.Context, req *mcp.CallToolRequest, args MapParams) (*mcp.CallToolResult, any, error) {
+	// Validate map type
+	if !ValidateMapType(args.MapType) {
+		args.MapType = (&SquareMap{}).Key() // default type
 	}
-	opts := MapGenOptions{
-		MapType:   mapType,
-		Width:     args.Width,
-		Height:    args.Height,
-		TileTypes: args.TileTypes,
+
+	gameMap, err := GenerateRandomMap(args)
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: "Error: " + err.Error()},
+			},
+		}, nil, err
 	}
-	gameMap := GenerateRandomMap(opts)
 	var result string
 	if info, ok := interface{}(gameMap).(interface{ Info() string }); ok {
 		result += info.Info() + "\n"
 	}
-	for _, tile := range gameMap.GetTiles() {
+	tiles := gameMap.GetTiles()
+	sort.Slice(tiles, func(i, j int) bool {
+		if tiles[i].Y == tiles[j].Y {
+			return tiles[i].X < tiles[j].X
+		}
+		return tiles[i].Y < tiles[j].Y
+	})
+	for _, tile := range tiles {
 		result += fmt.Sprintf("Tile (%d, %d): %s\n", tile.X, tile.Y, tile.Type)
 	}
 	return &mcp.CallToolResult{
